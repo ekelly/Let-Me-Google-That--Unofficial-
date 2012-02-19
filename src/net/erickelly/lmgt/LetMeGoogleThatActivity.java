@@ -6,8 +6,17 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.nfc.NdefMessage;
+import android.nfc.NdefRecord;
+import android.nfc.NfcAdapter;
+import android.nfc.NfcAdapter.CreateNdefMessageCallback;
+import android.nfc.NfcAdapter.OnNdefPushCompleteCallback;
+import android.nfc.NfcEvent;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.os.Parcelable;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -35,15 +44,20 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.charset.Charset;
+import java.util.Locale;
 
 import org.apache.http.util.ByteArrayBuffer;
 
-public class LetMeGoogleThatActivity extends Activity {
+public class LetMeGoogleThatActivity extends Activity implements CreateNdefMessageCallback {
 	private final static String TAG = "Main Activity";
 	
 	private Context mContext;
 	private String mShortUrl;
 	private String mLongUrl;
+	private String mSearch;
+	
+	NfcAdapter mNfcAdapter;
 	
     /** Called when the activity is first created. */
     @Override
@@ -55,15 +69,17 @@ public class LetMeGoogleThatActivity extends Activity {
         final EditText targetEditText = (EditText) findViewById(R.id.search);
         final ImageView googleImage = (ImageView) findViewById(R.id.logo);
         mContext = getApplicationContext();
+        mNfcAdapter = NfcAdapter.getDefaultAdapter(this);
+        
         targetEditText.setOnEditorActionListener(new OnEditorActionListener() {
 
 			@Override
 			public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
 				if (actionId == EditorInfo.IME_ACTION_DONE) {
-					String text = targetEditText.getText().toString();
-					URL url = generateUrl(text);
+					mSearch = targetEditText.getText().toString();
+					URL url = Urls.generateUrl(mSearch);
 					mLongUrl = url.toString();
-					(new ShortenerAsyncTask(mContext)).execute(new String[] { url.toString() });
+					(new ShortenerAsyncTask(LetMeGoogleThatActivity.this)).execute(new String[] { url.toString() });
 					InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
 					imm.hideSoftInputFromWindow(targetEditText.getWindowToken(), 0);
 		            return true;	
@@ -71,6 +87,9 @@ public class LetMeGoogleThatActivity extends Activity {
 		        return false;
 			}
         });
+        
+        // Register callback to set NDEF messages
+        mNfcAdapter.setNdefPushMessageCallback(this, this);
         
         // Animation
         final Animation a = AnimationUtils.loadAnimation(this, R.anim.fadein);
@@ -84,18 +103,27 @@ public class LetMeGoogleThatActivity extends Activity {
     
     private class ShortenerAsyncTask extends AsyncTask<String, Void, String> {
     	Context mContext;
+    	ProgressDialog loading;
     	
     	ShortenerAsyncTask(Context ctx) {
     		mContext = ctx;
     	}
     	
+    	@Override
+    	protected void onPreExecute() {
+    		loading = new ProgressDialog(mContext);
+			loading.setMessage("Fetching url");
+			loading.show();
+    	}
+    	
 		@Override
 		protected String doInBackground(String... params) {
-			return UrlShortener.getShortenedUrl(params[0]);
+			return Urls.getShortenedUrl(params[0]);
 		}
 		
 		protected void onPostExecute(String result) {
 			Log.d(TAG, result);
+			loading.dismiss();
 			success(result);
 		}
     }
@@ -135,7 +163,7 @@ public class LetMeGoogleThatActivity extends Activity {
     }
 
     public void success(final String shorturl) {
-		// Unhide the buttons
+		// Find the buttons
     	final Button share = (Button) findViewById(R.id.share); 
     	final Button preview = (Button) findViewById(R.id.preview);
     	final Button copy = (Button) findViewById(R.id.copy_link);
@@ -157,8 +185,10 @@ public class LetMeGoogleThatActivity extends Activity {
     	preview.setOnClickListener(new OnClickListener() {
     		@Override
 			public void onClick(View v) {
-    			Intent i = new Intent(Intent.ACTION_VIEW);
-    			i.setData(Uri.parse(shorturl));
+    			EditText search = (EditText) findViewById(R.id.search);
+    			String query = search.getText().toString();
+    			Intent i=new Intent(mContext, Preview.class);
+    			i.putExtra("query", query);
     			startActivity(i);
 			}
     	});
@@ -192,40 +222,14 @@ public class LetMeGoogleThatActivity extends Activity {
 			public void onAnimationRepeat(Animation arg0) {}
 			@Override
 			public void onAnimationStart(Animation arg0) {
-				share.setVisibility(0);
-				preview.setVisibility(0);
-				copy.setVisibility(0);
-				qr.setVisibility(0);
 				LL1.setVisibility(0);
 				LL2.setVisibility(0);
 			}
     		
     	});
         a.reset();
-        /*
-        share.startAnimation(a);
-        preview.startAnimation(a);
-        copy.startAnimation(a);
-        qr.startAnimation(a);*/
         LL1.startAnimation(a);
         LL2.startAnimation(a);
-	}
-
-	private URL generateUrl(String query) {
-    	URL url = null;
-    	try {
-			URI uri = new URI("http", 
-					"letmegooglethat.com", 
-					"/", "q=" + query, null);
-			url = uri.toURL();
-		} catch (URISyntaxException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (MalformedURLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return url;
     }
 	
 	public boolean DownloadFromUrl(String EncodeUrl) {
@@ -278,5 +282,49 @@ public class LetMeGoogleThatActivity extends Activity {
 			Log.d("DownloadManager", "Error: " + e);
 		}
 		return false;
+    }
+
+	@Override
+	public NdefMessage createNdefMessage(NfcEvent nfcEvent) {
+		if(mSearch != null) {
+			NdefMessage msg = new NdefMessage(
+	                new NdefRecord[] { createMimeRecord(
+	                        "application/net.erickelly.lmgt", mSearch.getBytes()),
+	                        NdefRecord.createApplicationRecord("net.erickelly.lmgt") });
+			return msg;
+		}
+		return null;
+	}
+	
+	@Override
+	public void onResume() {
+		super.onResume();
+		// Check to see that the Activity started due to an Android Beam
+        if (NfcAdapter.ACTION_NDEF_DISCOVERED.equals(getIntent().getAction())) {
+            processIntent(getIntent());
+        }
+	}
+	
+	/**
+     * Parses the NDEF Message from the intent and prints to the TextView
+     */
+    void processIntent(Intent intent) {
+    	Parcelable[] rawMsgs = intent.getParcelableArrayExtra(
+                NfcAdapter.EXTRA_NDEF_MESSAGES);
+        // only one message sent during the beam
+        NdefMessage msg = (NdefMessage) rawMsgs[0];
+        // record 0 contains the MIME type, record 1 is the AAR, if present
+        mSearch = new String(msg.getRecords()[0].getPayload());
+    }
+    
+    /**
+     * Creates a custom MIME type encapsulated in an NDEF record
+     */
+    public NdefRecord createMimeRecord(String mimeType, byte[] payload) {
+    	NdefRecord mimeRecord = new NdefRecord(
+    		    NdefRecord.TNF_MIME_MEDIA ,
+    		    "application/net.erickelly.lmgt".getBytes(Charset.forName("US-ASCII")),
+    		    new byte[0], payload);
+        return mimeRecord;
     }
 }

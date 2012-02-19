@@ -39,14 +39,14 @@
 	        android:background="@drawable/btn_black"
 	        android:visibility="visible"
 	        android:text="@string/preview" />
-
-	    <Button
-	        android:id="@+id/copy_link"
-	        android:background="@drawable/btn_black" 
+        
+        <Button
+	        android:id="@+id/qr_button"
 	        style="@style/ButtonText"
-	        android:layout_above="@+id/preview"
-	        android:visibility="visible"
-	        android:text="@string/copyShort" />
+	        android:background="@drawable/btn_black"
+	        android:text="@string/qr"
+	        android:visibility="visible" />
+
     </LinearLayout>
     
     <LinearLayout 
@@ -58,20 +58,19 @@
 	    android:layout_above="@id/LinearLayout1" >
 	    	    
 	    <Button
-	        android:id="@+id/share"
-	        android:background="@drawable/btn_black" 
+	        android:id="@+id/copy_link"
+	        android:background="@drawable/btn_blue" 
 	        style="@style/ButtonText"
-	        android:layout_above="@+id/copy_link"
+	        android:visibility="visible"
+	        android:text="@string/copyShort" />
+	    
+	    <Button
+	        android:id="@+id/share"
+	        android:background="@drawable/btn_blue" 
+	        style="@style/ButtonText"
 	        android:visibility="visible"
 	        android:text="@string/share" />
 	    
-	    <Button
-	        android:id="@+id/qr_button"
-	        style="@style/ButtonText"
-	        android:layout_above="@+id/share"
-	        android:background="@drawable/btn_black"
-	        android:text="@string/qr"
-	        android:visibility="visible" />
     </LinearLayout>
 
 </RelativeLayout>

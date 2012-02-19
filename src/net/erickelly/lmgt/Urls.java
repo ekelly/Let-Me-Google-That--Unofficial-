@@ -4,6 +4,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -25,7 +29,7 @@ import org.json.JSONObject;
 
 import android.util.Log;
 
-public class UrlShortener {
+public class Urls {
 
 	private static String API_KEY = "AIzaSyCpBbnzQ3gFoMwXJLZTa7ssaV_CLQ-t78o";
 	private static String GET_URL = "https://www.googleapis.com/urlshortener/v1/url?key=";
@@ -90,5 +94,41 @@ public class UrlShortener {
 		
 		return result;
 	}
+	
+	public static URL generateGoogleSearch(String query) {
+		URL url = null;
+		try {
+			URI uri = new URI("http",
+					"www.google.com",
+					"/search", 
+					"q=" + query,
+					null);
+			url = uri.toURL();
+		} catch (URISyntaxException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (MalformedURLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return url;
+	}
+	
+	public static URL generateUrl(String query) {
+    	URL url = null;
+    	try {
+			URI uri = new URI("http", 
+					"letmegooglethat.com", 
+					"/", "q=" + query, null);
+			url = uri.toURL();
+		} catch (URISyntaxException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (MalformedURLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return url;
+    }
 	
 }
