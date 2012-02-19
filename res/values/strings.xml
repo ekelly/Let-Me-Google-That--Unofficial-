@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="hello">Hello World, LetMeGoogleThatActivity!</string>
+    <string name="app_name">Let Me Google That</string>
+    <string name="share">Share Shortened Link</string>
+    <string name="copy">Copy Link</string>
+    <string name="copyShort">Copy Shortened Link</string>
+    <string name="preview">Preview in Browser</string>
+	
+</resources>
