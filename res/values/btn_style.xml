@@ -6,11 +6,12 @@
 	    <item name="android:textColor">#ffffff</item>
 	    <item name="android:gravity">center</item>
 	    <item name="android:layout_margin">3dp</item>
-	    <item name="android:textSize">18dp</item>
+	    <item name="android:textSize">14dp</item>
 	    <item name="android:textStyle">bold</item>
 	    <item name="android:shadowColor">#000000</item>
 	    <item name="android:shadowDx">1</item>
 	    <item name="android:shadowDy">1</item>
 	    <item name="android:shadowRadius">2</item>
+	    <item name="android:layout_weight">1</item>
 	</style>
 </resources>

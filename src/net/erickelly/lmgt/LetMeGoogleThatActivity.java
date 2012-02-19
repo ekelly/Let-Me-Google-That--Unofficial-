@@ -1,6 +1,7 @@
 package net.erickelly.lmgt;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
@@ -19,20 +20,30 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
 import android.widget.Toast;
 
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLConnection;
+
+import org.apache.http.util.ByteArrayBuffer;
 
 public class LetMeGoogleThatActivity extends Activity {
 	private final static String TAG = "Main Activity";
 	
 	private Context mContext;
 	private String mShortUrl;
+	private String mLongUrl;
 	
     /** Called when the activity is first created. */
     @Override
@@ -51,7 +62,8 @@ public class LetMeGoogleThatActivity extends Activity {
 				if (actionId == EditorInfo.IME_ACTION_DONE) {
 					String text = targetEditText.getText().toString();
 					URL url = generateUrl(text);
-					(new MyAsyncTask(mContext)).execute(new String[] { url.toString() });
+					mLongUrl = url.toString();
+					(new ShortenerAsyncTask(mContext)).execute(new String[] { url.toString() });
 					InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
 					imm.hideSoftInputFromWindow(targetEditText.getWindowToken(), 0);
 		            return true;	
@@ -70,11 +82,10 @@ public class LetMeGoogleThatActivity extends Activity {
         }
     }
     
-    private class MyAsyncTask extends AsyncTask<String, Void, String> {
-
+    private class ShortenerAsyncTask extends AsyncTask<String, Void, String> {
     	Context mContext;
     	
-    	MyAsyncTask(Context ctx) {
+    	ShortenerAsyncTask(Context ctx) {
     		mContext = ctx;
     	}
     	
@@ -87,24 +98,50 @@ public class LetMeGoogleThatActivity extends Activity {
 			Log.d(TAG, result);
 			success(result);
 		}
+    }
+    
+    private class QRCodeAsyncTask extends AsyncTask<String, Void, Boolean> {
+    	Context mContext;
+    	ProgressDialog loading;
     	
+    	QRCodeAsyncTask(Context ctx) {
+    		mContext = ctx;
+    	}
+    	
+    	@Override
+    	protected void onPreExecute() {
+    		loading = new ProgressDialog(mContext);
+			loading.setMessage("Downloading QR code");
+			loading.show();
+    	}
+    	
+		@Override
+		protected Boolean doInBackground(String... params) {
+			return DownloadFromUrl(params[0]);
+		}
+		
+		protected void onPostExecute(Boolean result) {
+			loading.dismiss();
+			if(result) {
+				Intent myIntent = new Intent(LetMeGoogleThatActivity.this, QRCodeDisplayer.class);
+				LetMeGoogleThatActivity.this.startActivity(myIntent);
+			} else {
+				Toast toast = new Toast(mContext);
+				toast.setDuration(Toast.LENGTH_LONG);
+				toast.setText("Sorry, something went wrong");
+				toast.show();
+			}
+		}
     }
-    /*
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-    	MenuInflater inflater = getMenuInflater();
-	    inflater.inflate(R.menu.share, menu);
-	    mShareActionProvider = (ShareActionProvider) menu.findItem(R.id.share).getActionProvider();
-	    //mShareActionProvider.setShareIntent(createShareIntent());
-	    return super.onCreateOptionsMenu(menu);
-    }
-    */
 
     public void success(final String shorturl) {
 		// Unhide the buttons
     	final Button share = (Button) findViewById(R.id.share); 
     	final Button preview = (Button) findViewById(R.id.preview);
     	final Button copy = (Button) findViewById(R.id.copy_link);
+    	final Button qr = (Button) findViewById(R.id.qr_button);
+    	final LinearLayout LL1 = (LinearLayout) findViewById(R.id.LinearLayout1);
+    	final LinearLayout LL2 = (LinearLayout) findViewById(R.id.LinearLayout2);
     	
     	mShortUrl = shorturl;
     	
@@ -138,6 +175,12 @@ public class LetMeGoogleThatActivity extends Activity {
     			 toast.show();
 			}
     	});
+    	qr.setOnClickListener(new OnClickListener() {
+    		@Override
+    		public void onClick(View v) {
+    			(new QRCodeAsyncTask(LetMeGoogleThatActivity.this)).execute(mLongUrl);
+    		}
+    	});
     	
     	// Unhide the buttons
     	final Animation a = AnimationUtils.loadAnimation(this, R.anim.slide_in);
@@ -152,13 +195,20 @@ public class LetMeGoogleThatActivity extends Activity {
 				share.setVisibility(0);
 				preview.setVisibility(0);
 				copy.setVisibility(0);
+				qr.setVisibility(0);
+				LL1.setVisibility(0);
+				LL2.setVisibility(0);
 			}
     		
     	});
         a.reset();
+        /*
         share.startAnimation(a);
         preview.startAnimation(a);
         copy.startAnimation(a);
+        qr.startAnimation(a);*/
+        LL1.startAnimation(a);
+        LL2.startAnimation(a);
 	}
 
 	private URL generateUrl(String query) {
@@ -177,5 +227,56 @@ public class LetMeGoogleThatActivity extends Activity {
 		}
 		return url;
     }
-    
+	
+	public boolean DownloadFromUrl(String EncodeUrl) {
+
+		final String QR_API = "http://chart.apis.google.com/chart?cht=qr&chs=420x420&chl=";
+		
+		try {
+			File root = android.os.Environment.getExternalStorageDirectory();               
+			File dir = new File (root.getAbsolutePath() + "/xmls");
+			if(dir.exists()==false) {
+				dir.mkdirs();
+			}
+
+			URL url = new URL(QR_API + EncodeUrl);
+			File file = new File(dir, "qrcode.png");
+
+			long startTime = System.currentTimeMillis();
+			Log.d("DownloadManager", "download begining");
+			Log.d("DownloadManager", "download url:" + url);
+			Log.d("DownloadManager", "downloading qr code");
+
+			/* Open a connection to that URL. */
+			URLConnection ucon = url.openConnection();
+
+			/*
+			 * Define InputStreams to read from the URLConnection.
+			 */
+			InputStream is = ucon.getInputStream();
+			BufferedInputStream bis = new BufferedInputStream(is);
+
+			/*
+			 * Read bytes to the Buffer until there is nothing more to read(-1).
+			 */
+			ByteArrayBuffer baf = new ByteArrayBuffer(5000);
+			int current = 0;
+			while ((current = bis.read()) != -1) {
+				baf.append((byte) current);
+			}
+
+			/* Convert the Bytes read to a String. */
+			FileOutputStream fos = new FileOutputStream(file);
+			fos.write(baf.toByteArray());
+			fos.flush();
+			fos.close();
+			Log.d("DownloadManager", "download ready in" + ((System.currentTimeMillis() - startTime) / 1000) + " sec");
+			
+			return true;
+
+		} catch (IOException e) {
+			Log.d("DownloadManager", "Error: " + e);
+		}
+		return false;
+    }
 }

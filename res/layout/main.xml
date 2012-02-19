@@ -24,32 +24,54 @@
         android:layout_below="@+id/logo"
         android:singleLine="true" />
 
-    <Button
-        android:id="@+id/preview"
-        style="@style/ButtonText"
-        android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true"
-        android:layout_marginBottom="20dip"
-        android:background="@drawable/btn_black"
-        android:visibility="invisible"
-        android:text="@string/preview" />
+    <LinearLayout 
+        android:id="@+id/LinearLayout1" 
+	    android:layout_height="wrap_content" 
+	    android:layout_width="fill_parent" 
+	    android:layout_alignParentBottom="true"
+	    android:visibility="invisible"
+	    android:layout_gravity="center_horizontal|center" >
+	    
+        <Button
+	        android:id="@+id/preview"
+	        style="@style/ButtonText"
+	        android:layout_marginBottom="20dip"
+	        android:background="@drawable/btn_black"
+	        android:visibility="visible"
+	        android:text="@string/preview" />
 
-    <Button
-        android:id="@+id/copy_link"
-        android:background="@drawable/btn_black" 
-        style="@style/ButtonText"
-        android:layout_above="@+id/preview"
-        android:layout_centerHorizontal="true"
-        android:visibility="invisible"
-        android:text="@string/copyShort" />
+	    <Button
+	        android:id="@+id/copy_link"
+	        android:background="@drawable/btn_black" 
+	        style="@style/ButtonText"
+	        android:layout_above="@+id/preview"
+	        android:visibility="visible"
+	        android:text="@string/copyShort" />
+    </LinearLayout>
     
-    <Button
-        android:id="@+id/share"
-        android:background="@drawable/btn_black" 
-        style="@style/ButtonText"
-        android:layout_above="@+id/copy_link"
-        android:layout_centerHorizontal="true"
-        android:visibility="invisible"
-        android:text="@string/share" />
+    <LinearLayout 
+        android:id="@+id/LinearLayout2" 
+	    android:layout_height="wrap_content" 
+	    android:layout_width="fill_parent"
+	    android:orientation="horizontal"
+	    android:visibility="invisible"
+	    android:layout_above="@id/LinearLayout1" >
+	    	    
+	    <Button
+	        android:id="@+id/share"
+	        android:background="@drawable/btn_black" 
+	        style="@style/ButtonText"
+	        android:layout_above="@+id/copy_link"
+	        android:visibility="visible"
+	        android:text="@string/share" />
+	    
+	    <Button
+	        android:id="@+id/qr_button"
+	        style="@style/ButtonText"
+	        android:layout_above="@+id/share"
+	        android:background="@drawable/btn_black"
+	        android:text="@string/qr"
+	        android:visibility="visible" />
+    </LinearLayout>
 
 </RelativeLayout>
